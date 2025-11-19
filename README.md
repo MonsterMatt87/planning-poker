@@ -47,6 +47,63 @@ Live version:
 
 ⸻
 
+## 🕒 Room Auto-Expiry (TTL)
+
+Planning Poker includes a built-in room TTL (Time-To-Live) system so old rooms automatically disappear from Firebase over time.
+
+How it works
+
+Each room keeps two timestamps:
+	•	createdAt – when the room was first created
+	•	updatedAt – last activity (vote, reveal, emoji rain, story change, etc.)
+
+When someone joins a room, the app checks:
+
+```
+if (lastActive && (now - lastActive) > ROOM_TTL_MS) {
+    // Room expired → delete it
+    await remove(ref(db, `rooms/${currentRoomId}`));
+}
+```
+
+If the room has been inactive longer than the TTL, it is deleted and recreated fresh.
+
+This prevents your Firebase Realtime Database from filling up with stale test rooms.
+
+⸻
+
+Changing the TTL
+
+The TTL is controlled by a single constant in app.js:
+
+```
+// How long a room should live without activity before being treated as expired.
+// Default: 24 hours
+const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
+```
+
+To change the TTL:
+
+| Desired TTL | Replace with |
+|-------------|--------------|
+| 1 hour      | `const ROOM_TTL_MS = 60 * 60 * 1000;` |
+| 12 hours    | `const ROOM_TTL_MS = 12 * 60 * 60 * 1000;` |
+| 2 days      | `const ROOM_TTL_MS = 2 * 24 * 60 * 60 * 1000;` |
+| 7 days      | `const ROOM_TTL_MS = 7 * 24 * 60 * 60 * 1000;` |
+
+You can set any time you like — just adjust the multiplier.
+
+⸻
+
+Why rooms are only deleted on join
+
+Firebase has no built-in cron or scheduled jobs without Cloud Functions.
+To keep this app serverless, cleanup happens the next time someone tries to join the room.
+
+This method is lightweight, free, and keeps your database tidy automatically.
+
+⸻
+
 ## 🧱 Tech stack
 
 - **Frontend:** HTML, CSS, Vanilla JS  
