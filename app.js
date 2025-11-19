@@ -1,3 +1,12 @@
+// =========================================
+// Planning Poker - Realtime Firebase Client
+// Handles:
+//   - Firebase initialisation
+//   - Joining/creating rooms
+//   - Syncing votes & participants in Realtime Database
+//   - Rendering cards, participants, and emoji rain
+//   - URL/share link handling and basic room TTL
+// =========================================
 // ==============================
 // 1. Firebase configuration
 // ==============================
@@ -28,6 +37,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
+// Initialise Firebase app + Realtime Database handle
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -86,6 +96,7 @@ const toastMessage = document.getElementById("toast-message");
 // 3. State
 // ==============================
 
+// Supported planning poker card values (displayed in this exact order)
 const CARD_VALUES = [
   "0",
   "1",
@@ -101,11 +112,11 @@ const CARD_VALUES = [
   "?"
 ];
 
-// Emoji fun
+// Emojis used by the emoji rain fun card
 const EMOJIS = ["🎉", "🚀", "🤖", "✨", "🔥", "💚", "📊", "✅", "🧠", "🌀", "💩"];
 let currentEmoji = "🎉";
 
-// Branding config
+// Lightweight branding config so the app title/tagline/accent can be tweaked easily
 const BRAND = {
   title: "Planning Poker",
   brandName: "",
@@ -133,13 +144,14 @@ let participantsSubscription = null; // unsubscribe function
 // 4. Helpers
 // ==============================
 
+// Generate a per-browser client ID so each tab is uniquely identified in the room.
 // Generate a stable client ID stored in localStorage so a person
 // keeps the same identity across page reloads.
 function generateClientId() {
   return "c_" + Math.random().toString(36).slice(2, 10);
 }
 
-// Generate a simple human-readable room ID like "Sweden-482".
+// Generate a human-readable room ID like "FRANCE-482" and normalise to uppercase.
 function generateRoomId() {
   const countries = [
     "UK", "USA", "Canada", "France", "Germany", "Spain", "Italy", "Japan",
@@ -163,6 +175,7 @@ function showToast(message) {
   }, 2000);
 }
 
+// Update the small "Online/Offline" indicator in the header.
 function setConnectionState(online) {
   if (!connectionDot || !connectionLabel) return;
   if (online) {
@@ -174,6 +187,7 @@ function setConnectionState(online) {
   }
 }
 
+// Keep the current room in the URL (as ?room=ROOM-ID) without reloading the page.
 function updateURLWithRoom(roomId) {
   const url = new URL(window.location.href);
   if (roomId) {
@@ -184,6 +198,7 @@ function updateURLWithRoom(roomId) {
   window.history.replaceState({}, "", url.toString());
 }
 
+// Update the room code pill in the header based on currentRoomId.
 function refreshShareUI() {
   if (!roomLabel) return;
   if (currentRoomId) {
@@ -193,6 +208,7 @@ function refreshShareUI() {
   }
 }
 
+// Build a shareable URL that opens this same room when someone visits it.
 function getShareLink() {
   const url = new URL(window.location.href);
   if (currentRoomId) {
@@ -241,7 +257,7 @@ async function broadcastEmojiRain(emoji) {
 }
 
 // ==============================
-// Branding helper
+// 4. Branding helper
 // ==============================
 // Apply simple branding values (title, tagline, accent colour)
 // and initialise the header pill with the current date/time.
@@ -282,7 +298,8 @@ function updateDateTimePill() {
 // 5. Rendering cards & participants
 // ==============================
 
-// Render the planning poker cards plus the extra emoji fun card.
+// Build the full set of cards (0-89, ?) plus the emoji rain card, and
+// highlight the currently selected vote.
 function renderCards() {
   if (!cardsContainer) return;
   cardsContainer.innerHTML = "";
@@ -352,11 +369,15 @@ function renderCards() {
   emojiCard.appendChild(emojiSub);
 
   emojiCard.addEventListener("click", () => {
-    const emoji = pickRandomEmoji();
-    currentEmoji = emoji;
-    emojiMain.textContent = emoji;
+    // Use the emoji currently displayed on the card for the rain,
+    // then rotate to a new emoji for the next click.
+    const emoji = currentEmoji || emojiMain.textContent || pickRandomEmoji();
     // Broadcast to the room so everyone sees the same emoji rain.
     broadcastEmojiRain(emoji);
+
+    const nextEmoji = pickRandomEmoji();
+    currentEmoji = nextEmoji;
+    emojiMain.textContent = nextEmoji;
   });
 
   cardsContainer.appendChild(emojiCard);
@@ -369,7 +390,11 @@ function renderCards() {
   }
 }
 
-// Render the right-hand participant list and summary stats.
+// Render the participant list in the right-hand panel, including:
+//   - Avatar initials
+//   - Voted/Thinking status
+//   - Vote value (hidden until reveal)
+//   - Summary stats (min/max/avg and voted/total)
 function renderParticipants() {
   if (!participantsList) return;
 
@@ -475,7 +500,7 @@ function renderParticipants() {
   }
 }
 
-// Update the visible "Current story" label from the currentStory state.
+// Lightweight helper to show either the current story or a fallback label.
 function updateStoryDisplay() {
   if (!storyCurrent) return;
   if (currentStory && currentStory.trim() !== "") {
@@ -489,7 +514,11 @@ function updateStoryDisplay() {
 // 6. Firebase syncing
 // ==============================
 
-// Subscribe to live updates for the given room's state and participants.
+// Attach live listeners for the given room so we stay in sync with:
+//   - reveal state
+//   - story text
+//   - emoji rain events
+//   - participants list
 function subscribeToRoom(roomId) {
   if (!roomId) return;
 
@@ -539,6 +568,7 @@ function subscribeToRoom(roomId) {
 
 // Join (or create) a room with the given ID and display name.
 async function joinRoom(roomId, name) {
+  // Normalise room ID and display name, and ensure we have a clientId for this browser.
   currentRoomId = roomId.trim().toUpperCase();
   currentName = name.trim() || "Anonymous";
 
@@ -563,21 +593,21 @@ async function joinRoom(roomId, name) {
 
   const now = Date.now();
 
-// Prefer updatedAt (last activity), fall back to createdAt
-let lastActive = null;
-if (existingState) {
-  if (typeof existingState.updatedAt === "number") {
-    lastActive = existingState.updatedAt;
-  } else if (typeof existingState.createdAt === "number") {
-    lastActive = existingState.createdAt;
+  // Prefer updatedAt (last activity), fall back to createdAt when deciding if a room is stale.
+  let lastActive = null;
+  if (existingState) {
+    if (typeof existingState.updatedAt === "number") {
+      lastActive = existingState.updatedAt;
+    } else if (typeof existingState.createdAt === "number") {
+      lastActive = existingState.createdAt;
+    }
   }
-}
 
-if (lastActive && (now - lastActive) > ROOM_TTL_MS) {
-  // Room expired, clear it so it behaves like new
-  await remove(ref(db, `rooms/${currentRoomId}`));
-  existingState = null;
-}
+  if (lastActive && (now - lastActive) > ROOM_TTL_MS) {
+    // Room expired, clear it so it behaves like new
+    await remove(ref(db, `rooms/${currentRoomId}`));
+    existingState = null;
+  }
 
   // Ensure timestamps exist for the room and bump updatedAt
   if (!existingState || !existingState.createdAt) {
@@ -640,7 +670,7 @@ async function clearVotesAndStory() {
   if (!currentRoomId) return;
   const participantsRef = ref(db, `rooms/${currentRoomId}/participants`);
   const stateRef = ref(db, `rooms/${currentRoomId}/state`);
-
+  // Fetch current participants so we can bulk-clear only their vote fields.
   const snap = await get(participantsRef);
   const currentParticipants = snap.val() || {};
   const updates = {};
@@ -673,7 +703,8 @@ async function saveStory(story) {
   });
 }
 
-// Leave the current room, clean up listeners, and reset the UI back to join screen.
+// Leave the current room, remove this participant server-side, and
+// reset all local UI/state back to the join screen.
 async function leaveRoom() {
   // Remove this participant from the room (best-effort)
   if (currentRoomId && clientId) {
@@ -725,7 +756,7 @@ async function leaveRoom() {
 // 8. Initialisation
 // ==============================
 
-// Read any persisted name and optional room code from the URL on first load.
+// On first load, restore name from localStorage and pre-fill room from ?room= query param.
 function initFromURL() {
   const url = new URL(window.location.href);
   const roomFromUrl = url.searchParams.get("room");
@@ -744,6 +775,7 @@ function initFromURL() {
 // 9. Event listeners
 // ==============================
 
+// --- UI: Join screen interactions ---
 if (randomRoomBtn && roomInput) {
   randomRoomBtn.addEventListener("click", () => {
     const id = generateRoomId();
@@ -842,7 +874,7 @@ window.addEventListener("beforeunload", () => {
 // 10. Boot
 // ==============================
 
-// Apply branding, then render initial cards (no room yet)
+// Kick everything off: branding, initial card render, URL parsing, and header state.
 applyBranding();
 setInterval(updateDateTimePill, 30000);
 renderCards();
