@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Planning Poker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-alt: #020617;
+      --card-bg: #1e293b;
+      --card-hover: #334155;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --danger: #f97373;
+      --border: #1f2933;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --shadow-soft: 0 18px 35px rgba(15, 23, 42, 0.7);
+      --transition-fast: 0.15s ease-out;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Leelawadee", system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 45%, #020617 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 1100px;
+      background: linear-gradient(145deg, var(--bg-alt), #020617);
+      border-radius: 28px;
+      padding: 20px 20px 24px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: scale(1.25);
+      transform-origin: top center;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 4px 4px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .title {
+      font-size: 1.25rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-logo {
+      height: 22px;
+      width: auto;
+      display: block;
+    }
+
+    .pill {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    .room-indicator {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+      font-size: 0.8rem;
+    }
+
+    .room-code {
+      font-family: "Leelawadee", system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      padding: 5px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .room-code span {
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .room-indicator button {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 0;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .room-indicator button:disabled {
+      pointer-events: none;
+      opacity: 0.45;
+    }
+
+    .room-indicator button:hover {
+      background: rgba(56, 189, 248, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 7px 15px rgba(56, 189, 248, 0.25);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1.4fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (max-width: 880px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .room-indicator {
+        align-items: flex-start;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    .card {
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.06) 0, var(--bg) 45%, var(--bg) 100%);
+      border-radius: var(--radius-xl);
+      padding: 16px 16px 14px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.7);
+    }
+
+    .card-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .section-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-soft);
+      gap: 8px;
+    }
+
+    .section-title-row h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #cbd5f5;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(30, 64, 175, 0.58);
+      color: #e0e7ff;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(129, 140, 248, 0.7);
+    }
+
+    .muted {
+      color: var(--text-soft);
+      font-size: 0.8rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    input[type="text"] {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 7px 10px;
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+      min-width: 0;
+      flex: 1;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.6);
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: 0;
+      padding: 7px 15px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast);
+    }
+
+    .btn-primary {
+      background: radial-gradient(circle at top left, #38bdf8 0, #0369a1 45%, #0f172a 100%);
+      color: #ecfeff;
+      box-shadow: 0 12px 22px rgba(56, 189, 248, 0.7);
+      border: 1px solid rgba(125, 211, 252, 0.9);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 30px rgba(56, 189, 248, 0.8);
+    }
+
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-soft);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(30, 41, 59, 0.9);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-soft);
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.1);
+      color: #fecaca;
+      border: 1px solid rgba(248, 113, 113, 0.65);
+    }
+
+    .btn-danger:hover {
+      background: rgba(248, 113, 113, 0.18);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .vote-card {
+      position: relative;
+      border-radius: var(--radius-lg);
+      padding: 18px 10px 14px;
+      background: linear-gradient(155deg, rgba(30, 64, 175, 0.8), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(129, 140, 248, 0.8);
+      text-align: center;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+      user-select: none;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .vote-card span.main {
+      display: block;
+      font-size: 1.2rem;
+      font-weight: 650;
+      letter-spacing: 0.03em;
+    }
+
+    .vote-card span.sub {
+      display: block;
+      font-size: 0.7rem;
+      opacity: 0.78;
+      margin-top: 2px;
+    }
+
+    .vote-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 26px rgba(30, 64, 175, 0.75);
+      border-color: rgba(191, 219, 254, 0.93);
+    }
+
+    .vote-card.selected {
+      transform: translateY(-3px);
+      border-color: #facc15;
+      box-shadow: 0 18px 30px rgba(250, 204, 21, 0.6);
+    }
+
+    /* Card intensity colours */
+    .vote-card.level-neutral {
+      background: radial-gradient(circle at top, #f9fafb 0, #e5e7eb 40%, #d1d5db 100%);
+      border-color: #e5e7eb;
+      color: #111827;
+    }
+
+    .vote-card.level-low {
+      background: linear-gradient(155deg, #22c55e, #16a34a);
+      border-color: rgba(34, 197, 94, 0.9);
+    }
+
+    .vote-card.level-mid {
+      background: linear-gradient(155deg, #eab308, #f97316);
+      border-color: rgba(234, 179, 8, 0.9);
+    }
+
+    .vote-card.level-high {
+      background: linear-gradient(155deg, #f97373, #b91c1c);
+      border-color: rgba(248, 113, 113, 0.95);
+    }
+
+    .emoji-card {
+      border-style: dashed;
+      border-width: 1px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      height: 90px;
+    }
+
+    .emoji-card .sub {
+      font-size: 0.7rem;
+      opacity: 0.85;
+    }
+
+    .emoji-fall {
+      position: fixed;
+      top: -10vh;
+      font-size: 2.2rem;
+      pointer-events: none;
+      animation: emojiFall 3.5s linear forwards;
+      z-index: 60;
+    }
+
+    @keyframes emojiFall {
+      0% {
+        transform: translateY(-10vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(120vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .controls-row-left,
+    .controls-row-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .status-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 0.7rem;
+    }
+
+    .status-pill {
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: rgba(15, 23, 42, 0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #4ade80;
+    }
+
+    .status-dot.offline {
+      background: #f97373;
+    }
+
+    /* Participants list */
+
+    .participants-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .participants-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 270px;
+      overflow-y: auto;
+    }
+
+    .participant {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(30, 64, 175, 0.7);
+    }
+
+    .participant-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top left, #38bdf8 0, #020617 50%, #020617 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(148, 163, 184, 0.85);
+    }
+
+    .participant-name {
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .participant-status {
+      font-size: 0.75rem;
+      color: var(--text-soft);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .vote-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #6b7280;
+    }
+
+    .vote-dot.ready {
+      background: #4ade80;
+    }
+
+    .participant-vote {
+      font-family: "Leelawadee", system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 0.8rem;
+      min-width: 38px;
+      text-align: right;
+    }
+
+    .participant-vote.revealed {
+      color: #e0f2fe;
+    }
+
+    .participant-vote.hidden-vote {
+      color: #64748b;
+    }
+
+    .summary {
+      border-radius: 18px;
+      padding: 10px 10px 8px;
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.16) 0, rgba(15, 23, 42, 0.95) 42%, rgba(15, 23, 42, 1) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      font-size: 0.8rem;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px 6px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.88);
+    }
+
+    .summary-label {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+    }
+
+    .summary-value {
+      font-family: "Leelawadee", system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 500px) {
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .badge-you {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.7);
+      color: #bae6fd;
+      background: rgba(15, 23, 42, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .footnote {
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      margin-top: 8px;
+    }
+
+    .footnote strong {
+      color: #e0e7ff;
+      font-weight: 500;
+    }
+
+    .join-hint {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 0.7rem;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--text-soft);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #38bdf8;
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.85);
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e0f2fe;
+      box-shadow: 0 18px 30px rgba(15, 23, 42, 0.9);
+      z-index: 2000;
+    }
+
+    .toast.hidden {
+      display: none;
+    }
+
+    .dot-pulse {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: #4ade80;
+      box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.9);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.8);
+      }
+      70% {
+        transform: scale(1.7);
+        box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+      }
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+      }
+    }
+
+    .story-input {
+      margin-top: 4px;
+    }
+
+    .story-input input {
+      width: 100%;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 7px 10px;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+
+    .story-current {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      margin-top: 4px;
+    }
+
+    .story-current strong {
+      color: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="title-group">
+        <div class="title">
+          <span id="app-title-text">Planning Poker</span>
+          <span class="pill" id="brand-pill">
+            <span class="dot-pulse"></span>
+            <span id="brand-pill-text">real-time room</span>
+          </span>
+        </div>
+        <div class="subtitle" id="subtitle-text">
+          Lightweight sprint refinement poker you can run from a link.
+        </div>
+      </div>
+      <div class="room-indicator">
+        <div class="room-code">
+          Room
+          <span id="room-code-label">—</span>
+        </div>
+        <button id="copy-link-btn" type="button" disabled>
+          Copy share link
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Left side: join & cards -->
+      <section class="card">
+        <div class="card-inner">
+          <!-- Join section -->
+          <div id="join-screen">
+            <div class="section-title-row">
+              <h2>Join or start a room</h2>
+              <span class="tag">
+                Step 1
+              </span>
+            </div>
+
+            <p class="muted join-hint">
+              Pick a name, then either paste an existing room code or generate a new one.
+            </p>
+
+            <div class="field-row" style="margin-top: 6px;">
+              <label for="name-input">Your name</label>
+              <input id="name-input" type="text" placeholder="e.g. Alex" autocomplete="off" />
+            </div>
+
+            <div class="field-row" style="margin-top: 8px;">
+              <label for="room-input">Room code</label>
+              <input id="room-input" type="text" placeholder="TEAM-1" autocomplete="off" />
+              <button id="random-room-btn" class="btn btn-ghost" type="button">
+                Random
+              </button>
+            </div>
+
+            <div class="field-row" style="margin-top: 10px; align-items: center; gap: 12px;">
+              <button id="join-room-btn" class="btn btn-primary" type="button">
+                Join room
+              </button>
+              <span id="join-error" style="color:#f97373; font-size:0.8rem; display:none;">There was a problem joining the room</span>
+            </div>
+
+            <div class="chip-row">
+              <div class="chip">
+                <span class="chip-dot"></span>
+                Everyone who opens the link with this room code joins the same session.
+              </div>
+            </div>
+          </div>
+
+          <!-- Poker section -->
+          <div id="poker-screen" class="hidden">
+            <p class="muted" style="margin-top: 0; margin-bottom: 6px;">Click a card to vote. Votes stay hidden until someone reveals.</p>
+            <div class="cards-grid" id="cards-container"></div>
+            <div class="controls-row">
+              <div class="controls-row-left">
+                <button id="reveal-btn" class="btn btn-secondary" type="button">
+                  Reveal votes
+                </button>
+                <button id="clear-btn" class="btn btn-danger" type="button">
+                  Clear for next story
+                </button>
+              </div>
+              <div class="controls-row-right">
+                <span class="muted" id="vote-status-label">No vote yet</span>
+                <button id="leave-btn" class="btn btn-ghost" type="button">
+                  Leave room
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right side: participants & summary -->
+      <section class="card">
+        <div class="card-inner participants-section">
+          <div class="section-title-row">
+            <h2>Room participants</h2>
+            <span class="muted" id="participant-count-label">0 in room</span>
+          </div>
+
+          <ul class="participants-list" id="participants-list"></ul>
+
+          <div class="summary" id="summary-panel">
+            <div class="summary-item">
+              <div class="summary-label">Votes cast</div>
+              <div class="summary-value" id="summary-count">0 / 0</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Minimum</div>
+              <div class="summary-value" id="summary-min">—</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Maximum</div>
+              <div class="summary-value" id="summary-max">—</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Average</div>
+              <div class="summary-value" id="summary-avg">—</div>
+            </div>
+          </div>
+
+          <p class="footnote">
+            <strong>Tip:</strong> Share the link and room code in your sprint refinement invite so everyone can jump in quickly.
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden">
+    <span class="dot-pulse"></span>
+    <span id="toast-message">Copied link</span>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
