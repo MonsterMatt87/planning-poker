@@ -38,8 +38,10 @@ Live version:
   - **Clear for next story** resets everything
 
 - 🌧️ **Emoji rain (fun room-wide effect)**  
-  - Special emoji card at the end of the deck  
-  - When clicked, triggers a synced emoji rain animation for **all participants**
+  - Special emoji button at the end of the card list
+  - When clicked, it rains the **emoji currently shown** on the button
+  - After raining, the button switches to a new random emoji for next time
+  - All participants see the same emoji rain instantly
 
 - 🔗 **Shareable link**  
   - One-click **Copy share link** button  
@@ -54,8 +56,10 @@ Planning Poker includes a built-in room TTL (Time-To-Live) system so old rooms a
 How it works
 
 Each room keeps two timestamps:
-	•	createdAt – when the room was first created
-	•	updatedAt – last activity (vote, reveal, emoji rain, story change, etc.)
+
+•	createdAt – when the room was first created
+
+•	updatedAt – last activity (vote, reveal, emoji rain, story change, etc.)
 
 When someone joins a room, the app checks:
 
@@ -98,6 +102,7 @@ You can set any time you like — just adjust the multiplier.
 Why rooms are only deleted on join
 
 Firebase has no built-in cron or scheduled jobs without Cloud Functions.
+
 To keep this app serverless, cleanup happens the next time someone tries to join the room.
 
 This method is lightweight, free, and keeps your database tidy automatically.
@@ -108,7 +113,8 @@ This method is lightweight, free, and keeps your database tidy automatically.
 
 - **Frontend:** HTML, CSS, Vanilla JS  
 - **Realtime sync:** Firebase Realtime Database  
-- **Hosting:** GitHub Pages  
+- **Hosting:** GitHub Pages
+- **ES module imports** from the Firebase CDN
 
 Everything runs 100% in the browser.
 
@@ -130,6 +136,8 @@ cd poker-planning
 	3.	Add a Web App
 	4.	Enable Realtime Database
 	5.	Copy the database URL (e.g. https://xxxx-default-rtdb.region.firebasedatabase.app)
+
+Make sure your Firebase Realtime Database is in **test mode** (no auth required) or configure rules appropriately for public usage.
 
 ### 3. Configure Firebase
 
