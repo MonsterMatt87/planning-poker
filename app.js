@@ -113,6 +113,10 @@ const BRAND = {
   accent: "#22c55e"
 };
 
+// How long a room should live without activity before being treated as expired.
+// Currently: 24 hours.
+const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
+
 // Room / client state
 let currentRoomId = null;
 let currentName = "";
@@ -558,13 +562,22 @@ async function joinRoom(roomId, name) {
   }
 
   const now = Date.now();
-  const DAY_MS = 24 * 60 * 60 * 1000;
 
-  if (existingState && existingState.createdAt && (now - existingState.createdAt) > DAY_MS) {
-    // Room expired, clear it so it behaves like new
-    await remove(ref(db, `rooms/${currentRoomId}`));
-    existingState = null;
+// Prefer updatedAt (last activity), fall back to createdAt
+let lastActive = null;
+if (existingState) {
+  if (typeof existingState.updatedAt === "number") {
+    lastActive = existingState.updatedAt;
+  } else if (typeof existingState.createdAt === "number") {
+    lastActive = existingState.createdAt;
   }
+}
+
+if (lastActive && (now - lastActive) > ROOM_TTL_MS) {
+  // Room expired, clear it so it behaves like new
+  await remove(ref(db, `rooms/${currentRoomId}`));
+  existingState = null;
+}
 
   // Ensure timestamps exist for the room and bump updatedAt
   if (!existingState || !existingState.createdAt) {
