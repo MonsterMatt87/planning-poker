@@ -19,6 +19,10 @@
   --radius-xl: 24px;
   --shadow-soft: 0 18px 35px rgba(15, 23, 42, 0.7);
   --transition-fast: 0.15s ease-out;
+  --low-text: #0f2900;
+  --mid-text: #332a00;
+  --high-text: #3a0000;
+  --neutral-text: #1e293b;
 }
 
 /* === Global reset === */
@@ -53,13 +57,14 @@ body {
   gap: 16px;
   transform: scale(1.25);
   transform-origin: top center;
+  position: relative;
 }
 
 /* === Header: title, subtitle, room indicator === */
 header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   padding: 6px 4px 4px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
@@ -112,6 +117,7 @@ header {
   gap: 4px;
   align-items: flex-end;
   font-size: 0.8rem;
+  margin-left: auto;
 }
 
 .room-code {
@@ -232,6 +238,23 @@ main {
   display: none !important;
 }
 
+/* Revealed votes bar inside header, to the right of the title/date */
+.revealed-overlay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none; /* display-only */
+}
+
+.revealed-overlay-card {
+  pointer-events: none;
+  width: 80px;          /* same visual width as selector cards */
+  flex: 0 0 80px;       /* <-- enforce fixed width in flex layout */
+  overflow: hidden;     /* hide anything that spills out */
+}
+
 /* === Form fields (name, room, story input) === */
 .field-row {
   display: flex;
@@ -329,9 +352,10 @@ input[type="text"]:focus {
 /* === Planning poker cards grid === */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  grid-template-columns: repeat(auto-fit, 80px);
   gap: 8px;
   margin-top: 8px;
+  justify-content: center; /* center the grid within the available space */
 }
 
 /* Individual planning poker cards */
@@ -366,6 +390,18 @@ input[type="text"]:focus {
   margin-top: 2px;
 }
 
+.revealed-name {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-bottom: 2px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 .vote-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 15px 26px rgba(30, 64, 175, 0.75);
@@ -382,22 +418,25 @@ input[type="text"]:focus {
 .vote-card.level-neutral {
   background: radial-gradient(circle at top, #f9fafb 0, #e5e7eb 40%, #d1d5db 100%);
   border-color: #e5e7eb;
-  color: #111827;
+  color: var(--neutral-text);
 }
 
 .vote-card.level-low {
   background: linear-gradient(155deg, #22c55e, #16a34a);
   border-color: rgba(34, 197, 94, 0.9);
+  color: var(--low-text);
 }
 
 .vote-card.level-mid {
   background: linear-gradient(155deg, #eab308, #f97316);
   border-color: rgba(234, 179, 8, 0.9);
+  color: var(--mid-text);
 }
 
 .vote-card.level-high {
   background: linear-gradient(155deg, #f97373, #b91c1c);
   border-color: rgba(248, 113, 113, 0.95);
+  color: var(--high-text);
 }
 
 /* Emoji rain trigger card */
@@ -515,6 +554,7 @@ input[type="text"]:focus {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1; /* allow left side to share space and enable truncation */
 }
 
 .avatar {
@@ -536,6 +576,8 @@ input[type="text"]:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  max-width: 120px; /* force long names to truncate visually */
 }
 
 .participant-status {

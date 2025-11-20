@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="app">    
       <!-- === APP HEADER: Title, branding, room code, copy link === -->
     <header>
       <div class="title-group">
@@ -31,6 +31,9 @@
           Lightweight sprint refinement poker you can run from a link.
         </div>
       </div>
+
+      <div id="revealed-overlay" class="revealed-overlay hidden"></div>
+      
       <div class="room-indicator">
         <div class="room-code">
           Room
@@ -41,6 +44,7 @@
         </button>
       </div>
     </header>
+
 
     <main>
       <!-- === LEFT SIDE: Join screen + Poker cards === -->
@@ -116,7 +120,7 @@
         <div class="card-inner participants-section">
           <div class="section-title-row">
             <h2>Room participants</h2>
-            <span class="muted" id="participant-count-label">0 in room</span>
+            <span class="muted" id="participants-count-label">0 in room</span>
           </div>
 
           <ul class="participants-list" id="participants-list"></ul>

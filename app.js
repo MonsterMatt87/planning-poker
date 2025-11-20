@@ -87,6 +87,10 @@ const summaryCount = document.getElementById("summary-count");
 const summaryMin = document.getElementById("summary-min");
 const summaryMax = document.getElementById("summary-max");
 const summaryAvg = document.getElementById("summary-avg");
+const participantsCountLabel = document.getElementById("participants-count-label");
+
+// Revealed votes overlay (above the main card)
+const revealedOverlay = document.getElementById("revealed-overlay");
 
 // Toast
 const toast = document.getElementById("toast");
@@ -113,7 +117,7 @@ const CARD_VALUES = [
 ];
 
 // Emojis used by the emoji rain fun card
-const EMOJIS = ["🎉", "🚀", "🤖", "✨", "🔥", "💚", "📊", "✅", "🧠", "🌀", "💩"];
+const EMOJIS = ["🎉", "🚀", "🤖", "✨", "🔥", "💚", "📊", "✅", "🧠", "🌀", "💩", "🥑", "🍆"];
 let currentEmoji = "🎉";
 
 // Lightweight branding config so the app title/tagline/accent can be tweaked easily
@@ -390,6 +394,73 @@ function renderCards() {
   }
 }
 
+// Render revealed votes as full coloured cards in the header when reveal is on.
+function renderRevealedCards() {
+  if (!revealedOverlay) return;
+
+  // Hide the overlay completely if we're not in reveal mode
+  if (!revealState) {
+    revealedOverlay.classList.add("hidden");
+    revealedOverlay.innerHTML = "";
+    return;
+  }
+
+  const entries = Object.entries(participants || {});
+
+  // Only participants who have actually cast a vote
+  const votedParticipants = entries.filter(([, p]) => p && p.vote);
+
+  if (votedParticipants.length === 0) {
+    revealedOverlay.classList.add("hidden");
+    revealedOverlay.innerHTML = "";
+    return;
+  }
+
+  revealedOverlay.classList.remove("hidden");
+  revealedOverlay.innerHTML = "";
+
+  votedParticipants.forEach(([, p], index) => {
+    const name = (p && p.name) ? p.name : "Anonymous";
+    const value = String(p.vote);
+
+    const card = document.createElement("div");
+    card.className = "vote-card revealed-overlay-card";
+
+    // Reuse the same colour intensity rules as the main cards
+    if (value === "0" || value === "?") {
+      card.classList.add("level-neutral");
+    } else {
+      const originalIndex = CARD_VALUES.indexOf(value);
+      const idx = originalIndex === -1 ? index : originalIndex;
+      if (idx <= 3) {
+        card.classList.add("level-low");
+      } else if (idx <= 7) {
+        card.classList.add("level-mid");
+      } else {
+        card.classList.add("level-high");
+      }
+    }
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "revealed-name";
+    nameSpan.textContent = name;
+
+    const mainSpan = document.createElement("span");
+    mainSpan.className = "main";
+    mainSpan.textContent = value;
+
+    const subSpan = document.createElement("span");
+    subSpan.className = "sub";
+    subSpan.textContent = value === "?" ? "Unsure" : "Points";
+
+    card.appendChild(nameSpan);
+    card.appendChild(mainSpan);
+    card.appendChild(subSpan);
+
+    revealedOverlay.appendChild(card);
+  });
+}
+
 // Render the participant list in the right-hand panel, including:
 //   - Avatar initials
 //   - Voted/Thinking status
@@ -451,29 +522,25 @@ function renderParticipants() {
     left.appendChild(avatar);
     left.appendChild(nameAndStatus);
 
-    // Right side: vote value
-    const voteSpan = document.createElement("span");
-    voteSpan.className = "participant-vote";
+    // Right side: tick if voted, … if not
+const voteSpan = document.createElement("span");
+voteSpan.className = "participant-vote";
 
-    if (!p.vote) {
-      voteSpan.textContent = revealState ? "—" : "…";
-      voteSpan.classList.add("hidden-vote");
-    } else if (p.vote === "?") {
-      voteSpan.textContent = revealState ? "?" : "…";
-      voteSpan.classList.add(revealState ? "revealed" : "hidden-vote");
-    } else {
-      if (revealState) {
-        voteSpan.textContent = p.vote;
-        voteSpan.classList.add("revealed");
-        const num = Number(p.vote);
-        if (!Number.isNaN(num)) {
-          numericVotes.push(num);
-        }
-      } else {
-        voteSpan.textContent = "…";
-        voteSpan.classList.add("hidden-vote");
-      }
-    }
+if (!p.vote) {
+  // No vote yet -> just "…"
+  voteSpan.textContent = "…";
+  voteSpan.classList.add("hidden-vote");
+} else {
+  // Voted -> always show ✅
+  voteSpan.textContent = "✅";
+  voteSpan.classList.add("revealed");
+
+  // Still collect numeric values for summary stats (min/max/avg)
+  const num = Number(p.vote);
+  if (!Number.isNaN(num)) {
+    numericVotes.push(num);
+  }
+}
 
     li.appendChild(left);
     li.appendChild(voteSpan);
@@ -485,6 +552,12 @@ function renderParticipants() {
   const voted = entries.filter(([, p]) => !!p.vote && p.vote !== "").length;
 
   if (summaryCount) summaryCount.textContent = `${voted} / ${total}`;
+
+  if (participantsCountLabel) {
+  participantsCountLabel.textContent = `${total} in room`;
+}
+  // Also update the revealed votes bar when participants change
+  renderRevealedCards();
 
   if (revealState && numericVotes.length > 0) {
     const min = Math.min(...numericVotes);
@@ -535,6 +608,7 @@ function subscribeToRoom(roomId) {
     const val = snap.val();
     revealState = !!val;
     renderParticipants();
+    renderRevealedCards();
   });
 
   const offStory = onValue(storyRef, (snap) => {
@@ -691,6 +765,7 @@ async function clearVotesAndStory() {
   updateStoryDisplay();
   renderCards();
   renderParticipants();
+  renderRevealedCards();
 }
 
 // Persist the current story/title to the room state.
@@ -742,6 +817,9 @@ async function leaveRoom() {
   if (summaryMin) summaryMin.textContent = "—";
   if (summaryMax) summaryMax.textContent = "—";
   if (summaryAvg) summaryAvg.textContent = "—";
+
+  // Hide any revealed votes bar when leaving the room
+  renderRevealedCards();
 
   if (joinScreen) joinScreen.classList.remove("hidden");
   if (pokerScreen) pokerScreen.classList.add("hidden");
