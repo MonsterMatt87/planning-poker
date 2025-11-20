@@ -25,27 +25,40 @@ Live version:
 - 🃏 **Planning poker cards**  
   - Card values: `0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, ?`  
   - Colour scale from green → yellow → red as the numbers increase  
-  - `0` and `?` are neutral (white)
+  - `0` and `?` are neutral (white/grey)  
+  - A special **emoji card** at the end triggers **emoji rain** for *everyone in the room* (🎉, 🚀, 🤖, ✨, 🔥, 💚, 📊, ✅, 🧠, 🌀, 💩, 🥑, 🍆)
 
 - 🧑‍🤝‍🧑 **Real-time participants list**  
   - Shows each participant’s name + initials avatar  
-  - “Thinking…” vs “Voted” status  
-  - Summary: **voted / total**, **min**, **max**, **average** (when revealed)
+  - “Thinking…” vs “Voted” status with a status dot  
+  - Right-hand column shows:
+    - `…` if they haven’t voted yet  
+    - `✅` if they have voted 
+  - Summary: **voted / total**, plus **min**, **max**, **average** once votes are revealed
 
-- 🙈 / 👀 **Hidden / revealed voting**  
-  - Votes are hidden by default  
-  - Click **Reveal votes** to show numbers  
-  - **Clear for next story** resets everything
+- 🙈 / 👀 **Hidden / revealed voting & header reveal view**  
+  - Votes are **hidden by default**  
+  - Click **Reveal votes** to:
+    - Show a row of full, coloured cards in the **header**, each with:
+      - The participant’s **name**
+      - Their **vote**
+      - A “Points” or “Unsure” label  
+    - Preserve the right-hand list as “who has voted” (✅/…) 
+  - **Clear for next story** resets:
+    - All votes
+    - Reveal state
+    - Story text
+    - The header revealed cards bar
 
-- 🌧️ **Emoji rain (fun room-wide effect)**  
-  - Special emoji button at the end of the card list
-  - When clicked, it rains the **emoji currently shown** on the button
-  - After raining, the button switches to a new random emoji for next time
-  - All participants see the same emoji rain instantly
+- 🌧️ **Emoji rain (room-wide effect)**  
+  - Special emoji card at the end of the deck  
+  - When clicked, writes an `emojiRain` event into the current room’s state  
+  - Every connected client sees the **same emoji** falling across their screen
 
 - 🔗 **Shareable link**  
   - One-click **Copy share link** button  
-  - Includes `?room=ROOM-ID` so participants land directly in your room
+  - Includes `?room=ROOM-ID` so participants land directly in your room  
+  - Copy button is disabled until you’re actually in a room
 
 ⸻
 
@@ -126,7 +139,7 @@ Everything runs 100% in the browser.
 
 ```bash
 git clone https://github.com/MonsterMatt87/planning-poker.git
-cd poker-planning
+cd planning-poker
 
 ```
 
@@ -236,6 +249,28 @@ emojiRain: { emoji: "🎉", at: 1710000000000, by: "c_abcd1234" }
 ```
 
 Every connected tab sees the update and animates the same emoji.
+
+Voting & reveal flow
+
+•	Each participant writes their vote to:
+
+```
+rooms/{ROOM_ID}/participants/{clientId}/vote
+```
+
+•	While reveal is false:
+
+	•	Right-hand panel shows only … or ✅
+	•	Header overlay is hidden
+	
+•	When someone clicks Reveal votes:
+	
+	•	state/reveal becomes true
+
+•	Every client:
+
+	•	Computes min, max, avg from numeric votes
+	•	Renders header cards showing {name, vote} for everyone who voted
 
 ⸻
 
