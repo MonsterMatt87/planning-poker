@@ -13,7 +13,18 @@ Live version:
 
 👉 [Open Planning Poker](https://MonsterMatt87.github.io/planning-poker/)
 
-⸻
+---
+
+## Table of contents
+
+- [✨ Features](#-features)
+- [🕒 Room auto-expiry (TTL)](#-room-auto-expiry-ttl)
+- [🧱 Tech stack](#-tech-stack)
+- [🚀 Getting started (local)](#-getting-started-local)
+- [🌍 Deploying to GitHub Pages](#-deploying-to-github-pages)
+- [🧩 How it works](#-how-it-works)
+- [🌱 Future ideas](#-future-ideas)
+- [📄 License](#-license)
 
 ## ✨ Features
 
@@ -60,19 +71,18 @@ Live version:
   - Includes `?room=ROOM-ID` so participants land directly in your room  
   - Copy button is disabled until you’re actually in a room
 
-⸻
+---
 
-## 🕒 Room Auto-Expiry (TTL)
+## 🕒 Room auto-expiry (TTL)
 
 Planning Poker includes a built-in room TTL (Time-To-Live) system so old rooms automatically disappear from Firebase over time.
 
-How it works
+### How it works
 
 Each room keeps two timestamps:
 
-•	createdAt – when the room was first created
-
-•	updatedAt – last activity (vote, reveal, emoji rain, story change, etc.)
+- `createdAt` – when the room was first created  
+- `updatedAt` – last activity (vote, reveal, emoji rain, story change, etc.)
 
 When someone joins a room, the app checks:
 
@@ -87,9 +97,7 @@ If the room has been inactive longer than the TTL, it is deleted and recreated f
 
 This prevents your Firebase Realtime Database from filling up with stale test rooms.
 
-⸻
-
-Changing the TTL
+### Changing the TTL
 
 The TTL is controlled by a single constant in app.js:
 
@@ -110,9 +118,7 @@ To change the TTL:
 
 You can set any time you like — just adjust the multiplier.
 
-⸻
-
-Why rooms are only deleted on join
+### Why rooms are only deleted on join
 
 Firebase has no built-in cron or scheduled jobs without Cloud Functions.
 
@@ -120,7 +126,7 @@ To keep this app serverless, cleanup happens the next time someone tries to join
 
 This method is lightweight, free, and keeps your database tidy automatically.
 
-⸻
+---
 
 ## 🧱 Tech stack
 
@@ -131,9 +137,14 @@ This method is lightweight, free, and keeps your database tidy automatically.
 
 Everything runs 100% in the browser.
 
-⸻
+---
 
 ## 🚀 Getting started (local)
+
+### Prerequisites
+
+- **Node.js** (optional, only if you want to use a local dev server like `npx serve`)
+- **Python 3** (optional, for `python3 -m http.server`)
 
 ### 1. Clone the repo
 
@@ -144,11 +155,12 @@ cd planning-poker
 ```
 
 ### 2. Create a Firebase project
-	1.	Go to https://console.firebase.google.com
-	2.	Create a project (or use an existing one)
-	3.	Add a Web App
-	4.	Enable Realtime Database
-	5.	Copy the database URL (e.g. https://xxxx-default-rtdb.region.firebasedatabase.app)
+
+1. Go to https://console.firebase.google.com  
+2. Create a project (or use an existing one)  
+3. Add a Web App  
+4. Enable Realtime Database  
+5. Copy the database URL (e.g. https://xxxx-default-rtdb.region.firebasedatabase.app)
 
 Make sure your Firebase Realtime Database is in **test mode** (no auth required) or configure rules appropriately for public usage.
 
@@ -169,7 +181,24 @@ const firebaseConfig = {
 };
 ```
 
-### 4. Serve locally
+### 4. (Optional) Set basic database rules
+
+If you want a lightweight public setup without authentication, these rules match the app’s usage pattern (read/write on rooms) while preventing access to other paths:
+
+```
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
+```
+
+### 5. Serve locally
 
 Because the app uses ES modules, you must run a local server.
 
@@ -183,7 +212,7 @@ Then open:
 http://localhost:8000/
 ```
 
-⸻
+---
 
 ## 🌍 Deploying to GitHub Pages
 
@@ -211,7 +240,7 @@ Your public live app will be available at:
 
 👉 https://<YOUR_USERNAME_HERE>.github.io/planning-poker/
 
-⸻
+---
 
 ## 🧩 How it works
 
@@ -234,13 +263,10 @@ rooms/{ROOM_ID}/
 
 Listening clients subscribe to:
 
-•	state/reveal
-
-•	state/story
-
-•	state/emojiRain (triggers synced emoji rain)
-
-•	participants
+- `state/reveal`  
+- `state/story`  
+- `state/emojiRain` (triggers synced emoji rain)  
+- `participants`
 
 Emoji rain sync works by writing:
 
@@ -252,47 +278,44 @@ Every connected tab sees the update and animates the same emoji.
 
 Voting & reveal flow
 
-•	Each participant writes their vote to:
+- Each participant writes their vote to:
 
 ```
 rooms/{ROOM_ID}/participants/{clientId}/vote
 ```
 
-•	While reveal is false:
-
-	•	Right-hand panel shows only … or ✅
-	•	Header overlay is hidden
+- While reveal is false:
+  - Right-hand panel shows only … or ✅  
+  - Header overlay is hidden
 	
-•	When someone clicks Reveal votes:
-	
-	•	state/reveal becomes true
+- When someone clicks Reveal votes:
+  - `state/reveal` becomes true
 
-•	Every client:
+- Every client:
+  - Computes min, max, avg from numeric votes  
+  - Renders header cards showing `{name, vote}` for everyone who voted
 
-	•	Computes min, max, avg from numeric votes
-	•	Renders header cards showing {name, vote} for everyone who voted
+---
 
-⸻
+## 🌱 Future ideas
 
-🌱 Future ideas
-
-•	Custom card sets (T-shirt sizing)
+- Custom card sets (T-shirt sizing)
   
-•	Dark mode toggle
+- Dark mode toggle
   
-•	Room facilitator controls
+- Room facilitator controls
   
-•	Timer per story
+- Timer per story
   
-•	Export results to a file
+- Export results to a file
 
-⸻
+---
 
-📄 License
+## 📄 License
 
 MIT License – free to use, modify, and share.
 
-⸻
+---
 
 Enjoy estimating with your team! 🧠🃏
 
