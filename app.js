@@ -7,22 +7,7 @@
 //   - Rendering cards, participants, and emoji rain
 //   - URL/share link handling and basic room TTL
 // =========================================
-// ==============================
-// 1. Firebase configuration
-// ==============================
-
-// TODO: Paste your own Firebase config here from the Firebase console
-// (Project settings -> Web app). Example shape:
- const firebaseConfig = {
-  apiKey: "AIzaSyDgCPedP7jg9vZFj6ioqQ2QU5mmX7CGmRo",
-  authDomain: "planning-poker-e91b7.firebaseapp.com",
-  databaseURL: "https://planning-poker-e91b7-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "planning-poker-e91b7",
-  storageBucket: "planning-poker-e91b7.firebasestorage.app",
-  messagingSenderId: "652847125094",
-  appId: "1:652847125094:web:44c42a0a3bb1106fc353a7",
-  measurementId: "G-T7MZ6W7GWH"
- };
+import { generateRoomId, getInitials } from "./utils.js";
 
 // Import Firebase modules from CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -37,6 +22,22 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
+// ==============================
+// 1. Firebase configuration
+// ==============================
+
+// TODO: Paste your own Firebase config here from the Firebase console
+// (Project settings -> Web app). Example shape:
+const firebaseConfig = {
+  apiKey: "AIzaSyDgCPedP7jg9vZFj6ioqQ2QU5mmX7CGmRo",
+  authDomain: "planning-poker-e91b7.firebaseapp.com",
+  databaseURL: "https://planning-poker-e91b7-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "planning-poker-e91b7",
+  storageBucket: "planning-poker-e91b7.firebasestorage.app",
+  messagingSenderId: "652847125094",
+  appId: "1:652847125094:web:44c42a0a3bb1106fc353a7",
+  measurementId: "G-T7MZ6W7GWH"
+};
 // Initialise Firebase app + Realtime Database handle
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -149,24 +150,8 @@ let participantsSubscription = null; // unsubscribe function
 // ==============================
 
 // Generate a per-browser client ID so each tab is uniquely identified in the room.
-// Generate a stable client ID stored in localStorage so a person
-// keeps the same identity across page reloads.
 function generateClientId() {
   return "c_" + Math.random().toString(36).slice(2, 10);
-}
-
-// Generate a human-readable room ID like "FRANCE-482" and normalise to uppercase.
-function generateRoomId() {
-  const countries = [
-    "UK", "USA", "Canada", "France", "Germany", "Spain", "Italy", "Japan",
-    "China", "Brazil", "India", "Australia", "Sweden", "Norway", "Finland",
-    "Denmark", "Ireland", "Poland", "Austria", "Belgium", "Switzerland",
-    "Portugal", "Greece", "Netherlands", "Mexico", "SouthAfrica", "NewZealand",
-    "Turkey", "Argentina", "Chile", "Colombia", "Peru"
-  ];
-  const country = countries[Math.floor(Math.random() * countries.length)];
-  const num = Math.floor(100 + Math.random() * 900);
-  return `${country}-${num}`.toUpperCase();
 }
 
 // Show a temporary toast notification near the top of the screen.
@@ -405,7 +390,7 @@ function renderRevealedCards() {
     return;
   }
 
-  const entries = Object.entries(participants || {});
+  const entries = Object.entries(participants || {}).filter(([, p]) => p && typeof p === "object");
 
   // Only participants who have actually cast a vote
   const votedParticipants = entries.filter(([, p]) => p && p.vote);
@@ -471,7 +456,7 @@ function renderParticipants() {
 
   participantsList.innerHTML = "";
 
-  const entries = Object.entries(participants || {});
+  const entries = Object.entries(participants || {}).filter(([, p]) => p && typeof p === "object");
   let numericVotes = [];
 
   entries.forEach(([id, p]) => {
@@ -486,14 +471,7 @@ function renderParticipants() {
 
     const avatar = document.createElement("div");
     avatar.className = "avatar";
-    const initials = name
-      .trim()
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-    avatar.textContent = initials || "?";
+    avatar.textContent = getInitials(name);
 
     const nameAndStatus = document.createElement("div");
     nameAndStatus.style.display = "flex";
@@ -523,24 +501,24 @@ function renderParticipants() {
     left.appendChild(nameAndStatus);
 
     // Right side: tick if voted, … if not
-const voteSpan = document.createElement("span");
-voteSpan.className = "participant-vote";
+    const voteSpan = document.createElement("span");
+    voteSpan.className = "participant-vote";
 
-if (!p.vote) {
-  // No vote yet -> just "…"
-  voteSpan.textContent = "…";
-  voteSpan.classList.add("hidden-vote");
-} else {
-  // Voted -> always show ✅
-  voteSpan.textContent = "✅";
-  voteSpan.classList.add("revealed");
+    if (!p.vote) {
+      // No vote yet -> just "…"
+      voteSpan.textContent = "…";
+      voteSpan.classList.add("hidden-vote");
+    } else {
+      // Voted -> always show ✅
+      voteSpan.textContent = "✅";
+      voteSpan.classList.add("revealed");
 
-  // Still collect numeric values for summary stats (min/max/avg)
-  const num = Number(p.vote);
-  if (!Number.isNaN(num)) {
-    numericVotes.push(num);
-  }
-}
+      // Still collect numeric values for summary stats (min/max/avg)
+      const num = Number(p.vote);
+      if (!Number.isNaN(num)) {
+        numericVotes.push(num);
+      }
+    }
 
     li.appendChild(left);
     li.appendChild(voteSpan);
@@ -554,8 +532,8 @@ if (!p.vote) {
   if (summaryCount) summaryCount.textContent = `${voted} / ${total}`;
 
   if (participantsCountLabel) {
-  participantsCountLabel.textContent = `${total} in room`;
-}
+    participantsCountLabel.textContent = `${total} in room`;
+  }
   // Also update the revealed votes bar when participants change
   renderRevealedCards();
 
