@@ -125,7 +125,7 @@ This method is lightweight, free, and keeps your database tidy automatically.
 ## 🧱 Tech stack
 
 - **Frontend:** HTML, CSS, Vanilla JS  
-- **Realtime sync:** Firebase Realtime Database  
+- **Real-time sync:** Firebase Realtime Database  
 - **Hosting:** GitHub Pages
 - **ES module imports** from the Firebase CDN
 
